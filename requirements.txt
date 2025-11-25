@@ -1,1 +1,2 @@
 timesfm[torch]==1.3.0
+matplotlib==3.10.7

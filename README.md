@@ -1,8 +1,12 @@
 # Cisco Time Series Model
 
-The Cisco Time Series Model is a foundation model trained to perform univariate zero-shot forecasting. Its core is a sequence of decoder-only transformer layers. It is heavily based on the [TimesFM2.0 model](https://huggingface.co/google/timesfm-2.0-500m-pytorch), with multiresolution modifications aimed at efficient use of long context. It expects a multiresolution context ($x_c$, $x_f$), where the resolution (i.e., space between data points) of $x_c$ is 60 times the resolution of $x_f$. Both $x_c$ and $x_f$ can have length up to 512. The input contexts should be aligned “on the right”, e.g., if $x_f$ consists of the 512 minutes terminating at 11:00AM on November 11, then $x_c$ should consist of the 512 hours terminating at the same time. The output is a forecast of 128 points, which should be interpreted at the finer resolution; and corresponding quantiles for these points.
+[![arXiv technical report](https://img.shields.io/static/v1?label=Technical-Report&message=2511.19841&color=B31B1B&logo=arXiv)](https://arxiv.org/abs/2511.19841)
+[![huggingface](https://img.shields.io/badge/%F0%9F%A4%97%20HF-Model-FFD21E)](https://huggingface.co/cisco-ai/cisco-time-series-model-1.0-preview)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
-For convenience, we provide utilities for preparing a multiresolution context from a single resolution context (with length up to 512 x 60 = 30,720) directly.
+The Cisco Time Series Model is a foundation model trained to perform univariate zero-shot forecasting. Its core is a sequence of decoder-only transformer layers. It is based on the [TimesFM2.0 model](https://huggingface.co/google/timesfm-2.0-500m-pytorch), with multiresolution modifications aimed at efficient use of long context. It expects a multiresolution context ($x_c$, $x_f$), where the resolution (i.e., space between data points) of $x_c$ is 60 times the resolution of $x_f$. Both $x_c$ and $x_f$ can have length up to 512. The input contexts should be aligned “on the right,” e.g., if $x_f$ consists of the 512 minutes terminating at 11:00AM on November 11, then $x_c$ should consist of the 512 hours terminating at the same time. The output is a forecast of 128 points, which should be interpreted at the finer resolution; and corresponding quantiles for these points.
+
+For convenience, we also provide utilities for preparing a multiresolution context from a single resolution context (with length up to 512 x 60 = 30,720) directly.
 
 ## Model Architecture and Training Details
 <figure>
@@ -12,7 +16,7 @@ For convenience, we provide utilities for preparing a multiresolution context fr
 
 Despite not conforming to the TimesFM architecture, the pre-training of the Cisco Time Series Model began from the weights of TimesFM. The dataset used for the additional training contains over 300B unique datapoints. Slightly more than 50% of the data is derived from metric time series data from internal deployments of the Splunk Observability Cloud, with about 35% at (1-hour, 1-minute) resolution, and the remaining 15% at (5-hour, 5-minute) resolution. Additional multiresolution data, comprising about 30% of the training set, was derived from the [GIFT-Eval](https://huggingface.co/datasets/Salesforce/GiftEvalPretrain) pretraining corpus. Another 5% was derived from the [Chronos](https://huggingface.co/datasets/autogluon/chronos_datasets) dataset collection (less overlap with GIFT-Eval test). The final 15% is synthetic multiresolution data.
 
-The technical report will be released on arXiv soon; you can also access it [here](1.0-preview/technical_report/Cisco-Time-Series-Model-Technical-Report.pdf).
+The technical report is now available on [arXiv](https://arxiv.org/abs/2511.19841); you can also access a local copy [here](1.0-preview/technical_report/Cisco-Time-Series-Model-Technical-Report.pdf).
 
 ### Example Visualization of Multiresolution Time Series Input to the Model
 <figure>
@@ -121,6 +125,17 @@ We also provide few Jupyter notebooks demonstrating how to use the Cisco Time Se
 
 <b>Notebooks contributed by:</b> Huaibo Zhao
 
+## Citation
+If you find Cisco Time Series Model useful for your research, please consider citing the associated technical report:
+```
+@inproceedings{Gou2025CiscoTS,
+  title={Cisco Time Series Model Technical Report},
+  author={Liang Gou and Archit Khare and Praneet Pabolu and Prachi Patel and Joseph Ross and Hercy Shen and Yuhan Song and Jingze Sun and Kristal Curtis and Vedant Dharnidharka and Abhinav Mathur and Hao Yang},
+  year={2025},
+  url={https://api.semanticscholar.org/CorpusID:283251030}
+}
+```
+
 ## Authored by:
 - Liang Gou \*
 - Archit Khare \*
@@ -138,3 +153,6 @@ We also provide few Jupyter notebooks demonstrating how to use the Cisco Time Se
 \* These authors contributed equally to the core development of this work, listed alphabetically by last name. <br>
 † These authors contributed equally to supporting and extending this work, listed alphabetically by last name. <br>
 ‡ Hercy Shen contributed to this work while an intern at Splunk.<br>
+
+## License
+This project is licensed under the Apache-2.0 License. See the [LICENSE](LICENSE) file for more details.

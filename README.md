@@ -45,10 +45,10 @@ The technical report is now available on [arXiv](https://arxiv.org/abs/2511.1984
 
     # Create a virtual environment
     uv venv
-    
+
     # Activate the environment
     source .venv/bin/activate
-    
+
     # Install the package in editable mode with torch
     uv pip install -r requirements.txt
     ```
@@ -62,6 +62,16 @@ The technical report is now available on [arXiv](https://arxiv.org/abs/2511.1984
     ```
 
 ## Example Code
+
+### Run the example with a helper script
+
+After installing dependencies and changing into the `1.0-preview/` directory, you can run the full example with a single command:
+
+```bash
+python run_readme_example.py
+```
+
+The script generates the synthetic series, downloads the checkpoint if needed, executes the single-series, multi-series, and long-horizon forecasts, and prints quick summaries of the outputs for inspection.
 
 ```python
 import torch
@@ -129,13 +139,13 @@ We also provide few Jupyter notebooks demonstrating how to use the Cisco Time Se
 If you find Cisco Time Series Model useful for your research, please consider citing the associated technical report:
 ```
 @misc{gou2025ciscotimeseriesmodel,
-      title={Cisco Time Series Model Technical Report}, 
+      title={Cisco Time Series Model Technical Report},
       author={Liang Gou and Archit Khare and Praneet Pabolu and Prachi Patel and Joseph Ross and Hercy Shen and Yuhan and Song and Jingze Sun and Kristal Curtis and Vedant Dharnidharka and Abhinav Mathur and Hao Yang},
       year={2025},
       eprint={2511.19841},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2511.19841}, 
+      url={https://arxiv.org/abs/2511.19841},
 }
 ```
 

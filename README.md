@@ -73,6 +73,24 @@ python run_readme_example.py
 
 The script generates the synthetic series, downloads the checkpoint if needed, executes the single-series, multi-series, and long-horizon forecasts, and prints quick summaries of the outputs for inspection.
 
+### Visualize history vs forecast
+
+If you would like to graph both the input series and the forecast mean/quantile band, you can run:
+
+```bash
+python run_plot_example.py --output forecast.png
+```
+
+This produces a matplotlib figure with the historical series, the mean projection, and the 10–90% uncertainty band labeled clearly. A copy is always saved to `1.0-preview/images/synthetic_forecast.png`; omit `--output` to skip the additional custom path.
+
+To repeat the same visualization flow on real data, use the provided CPU sample CSV:
+
+```bash
+python run_plot_cpu_csv.py --csv sample_data/cpu_utilization.csv --output cpu_forecast.png
+```
+
+The script parses the `_time`/`cpu_util` columns, runs a forecast, and overlays history, mean prediction, and the 10–90% band with a timestamped x-axis. It always writes a figure into `1.0-preview/images/` (named after the CSV stem) in addition to any custom path you pass via `--output`.
+
 ```python
 import torch
 import numpy as np

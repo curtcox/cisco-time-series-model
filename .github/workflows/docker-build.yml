@@ -47,10 +47,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            env.NVIDIA_VISIBLE_DEVICES=all
-            env.NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'

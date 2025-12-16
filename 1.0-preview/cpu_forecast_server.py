@@ -93,7 +93,7 @@ def _resolve_series(csv_text: Optional[str], file_storage, use_sample: bool) -> 
     raise ValueError("No CSV data provided and sample usage disabled.")
 
 
-def _render_plot(timestamps: list[datetime], series: np.ndarray, horizon: int) -> bytes:
+def _render_plot(timestamps: list[datetime], series: np.ndarray, horizon: int) -> Tuple[bytes, dict]:
     model = _model_singleton()
     forecast = model.forecast(series, horizon_len=horizon)[0]
     mean_forecast = forecast["mean"]
@@ -126,7 +126,24 @@ def _render_plot(timestamps: list[datetime], series: np.ndarray, horizon: int) -
     fig.savefig(buffer, format="png", dpi=200)
     plt.close(fig)
     buffer.seek(0)
-    return buffer.read()
+
+    history_timestamps = [ts.isoformat() for ts in timestamps]
+    forecast_timestamps = [ts.isoformat() for ts in forecast_times]
+    plot_payload = {
+        "history": {
+            "timestamps": history_timestamps,
+            "values": series.astype(float).tolist(),
+        },
+        "forecast": {
+            "timestamps": forecast_timestamps,
+            "mean": mean_forecast.astype(float).tolist(),
+            "p10": p10.astype(float).tolist() if p10 is not None else None,
+            "p90": p90.astype(float).tolist() if p90 is not None else None,
+        },
+        "boundary_timestamp": timestamps[-1].isoformat(),
+    }
+
+    return buffer.read(), plot_payload
 
 
 def _extract_params(req) -> Tuple[int, SeriesPayload]:
@@ -172,10 +189,11 @@ def home():
             horizon=DEFAULT_HORIZON,
             use_sample=True,
             max_horizon=MAX_HORIZON,
+            plot_payload=None,
         )
     try:
         horizon, payload = _extract_params(request)
-        png_bytes = _render_plot(payload.timestamps, payload.values, horizon)
+        png_bytes, plot_payload = _render_plot(payload.timestamps, payload.values, horizon)
         img_b64 = base64.b64encode(png_bytes).decode("ascii")
         return render_template(
             "cpu_forecast.html",
@@ -185,6 +203,7 @@ def home():
             horizon=horizon,
             use_sample=request.form.get("use_sample") in ("1", "true", "on"),
             max_horizon=MAX_HORIZON,
+            plot_payload=plot_payload,
         )
     except ValueError as exc:
         return (
@@ -196,6 +215,7 @@ def home():
                 horizon=request.form.get("horizon", DEFAULT_HORIZON),
                 use_sample=request.form.get("use_sample") in ("1", "true", "on"),
                 max_horizon=MAX_HORIZON,
+                plot_payload=None,
             ),
             400,
         )
@@ -205,7 +225,7 @@ def home():
 def api_forecast():
     try:
         horizon, payload = _extract_params(request)
-        png_bytes = _render_plot(payload.timestamps, payload.values, horizon)
+        png_bytes, _ = _render_plot(payload.timestamps, payload.values, horizon)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return send_file(

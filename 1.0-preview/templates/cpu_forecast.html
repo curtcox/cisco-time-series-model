@@ -74,6 +74,9 @@
         padding: 1.5rem;
         box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
       }
+      .plotly-card {
+        margin-top: 2rem;
+      }
       .api-block {
         border-radius: 0.75rem;
         background: #0f172a;
@@ -134,6 +137,102 @@
         <h2>Preview</h2>
         <img class="preview" src="data:image/png;base64,{{ image_data }}" alt="Forecast preview">
       {% endif %}
+      {% if plot_payload %}
+        <div class="plotly-card">
+          <h2>Interactive view</h2>
+          <div id="interactive-forecast" style="height: 480px;"></div>
+        </div>
+      {% endif %}
     </section>
+    <script id="plot-payload-data" type="application/json">{{ plot_payload|tojson|safe if plot_payload else "null" }}</script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script>
+      const payloadNode = document.getElementById('plot-payload-data');
+      const plotPayload = payloadNode ? JSON.parse(payloadNode.textContent) : null;
+      if (plotPayload) {
+        const historyTrace = {
+          x: plotPayload.history.timestamps,
+          y: plotPayload.history.values,
+          mode: 'lines',
+          name: 'CPU utilization history',
+          line: { color: '#1f77b4', width: 2 }
+        };
+
+        const forecastTrace = {
+          x: plotPayload.forecast.timestamps,
+          y: plotPayload.forecast.mean,
+          mode: 'lines',
+          name: 'Forecast mean',
+          line: { color: '#ff7f0e', width: 2.2 }
+        };
+
+        const traces = [historyTrace];
+
+        if (plotPayload.forecast.p10 && plotPayload.forecast.p90) {
+          const bandLower = {
+            x: plotPayload.forecast.timestamps,
+            y: plotPayload.forecast.p10,
+            mode: 'lines',
+            line: { width: 0 },
+            hoverinfo: 'skip',
+            showlegend: false
+          };
+          const bandUpper = {
+            x: plotPayload.forecast.timestamps,
+            y: plotPayload.forecast.p90,
+            mode: 'lines',
+            fill: 'tonexty',
+            fillcolor: 'rgba(255, 127, 14, 0.18)',
+            line: { width: 0 },
+            name: 'Forecast 10–90% band'
+          };
+          traces.push(bandLower, bandUpper);
+        }
+
+        traces.push(forecastTrace);
+
+        const boundaryShape = {
+          type: 'line',
+          x0: plotPayload.boundary_timestamp,
+          x1: plotPayload.boundary_timestamp,
+          yref: 'paper',
+          y0: 0,
+          y1: 1,
+          line: {
+            color: '#0f172a',
+            width: 1.2,
+            dash: 'dash'
+          }
+        };
+
+        const layout = {
+          template: 'plotly_white',
+          hovermode: 'x unified',
+          legend: { orientation: 'h', y: -0.2 },
+          margin: { t: 60, r: 20, b: 60, l: 60 },
+          xaxis: {
+            title: 'Timestamp (UTC)',
+            tickformat: '%Y-%m-%d<br>%H:%M',
+          },
+          yaxis: {
+            title: 'CPU Utilization [%]'
+          },
+          shapes: [boundaryShape],
+          title: {
+            text: 'CiscoTsmMR Forecast vs. CPU Utilization History',
+            x: 0.01
+          }
+        };
+
+        const config = {
+          responsive: true,
+          displaylogo: false,
+          scrollZoom: true,
+          modeBarButtonsToRemove: ['lasso2d', 'select2d']
+        };
+
+        Plotly.newPlot('interactive-forecast', traces, layout, config);
+      }
+    </script>
   </body>
 </html>

@@ -1,4 +1,5 @@
-FROM python:3.10.13-slim AS base
+ARG BASE_IMAGE=python:3.10.13-slim
+FROM ${BASE_IMAGE} AS base
 
 ARG TORCH_WHL_CHANNEL=cpu
 

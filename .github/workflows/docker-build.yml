@@ -23,10 +23,12 @@ jobs:
         include:
           - variant: cpu
             torch_channel: cpu
+            base_image: python:3.10.13-slim
             tag_suffix: cpu
             is_default: "true"
           - variant: gpu
             torch_channel: cu121
+            base_image: pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
             tag_suffix: gpu
             is_default: "false"
     env:
@@ -34,13 +36,12 @@ jobs:
       IMAGE_NAME: ${{ github.repository_owner }}/cisco-cpu-forecast
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      GPU_TORCH_CHANNEL: cu121
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install NVIDIA Container Toolkit (if GPU detected)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.variant == 'gpu'
         shell: bash
         run: |
           if ! command -v nvidia-smi >/dev/null 2>&1 && [ ! -e /proc/driver/nvidia/version ]; then
@@ -90,7 +91,8 @@ jobs:
           context: .
           file: Dockerfile
           build-args: |
-            TORCH_WHL_CHANNEL=${{ matrix.variant == 'gpu' && env.GPU_TORCH_CHANNEL || matrix.torch_channel }}
+            TORCH_WHL_CHANNEL=${{ matrix.torch_channel }}
+            BASE_IMAGE=${{ matrix.base_image }}
           load: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep-tags.outputs.tags }}

@@ -133,6 +133,10 @@
       <pre class="api-block">curl -o forecast.png -X POST http://localhost:8000/api/forecast \
   -H "Content-Type: application/json" \
   -d '{"horizon": {{ horizon }}, "use_sample": true}'</pre>
+      <p>To POST your own CSV file (with <code>_time</code> and <code>cpu_util</code> columns) use multipart form data:</p>
+      <pre class="api-block">curl -o forecast.png -X POST http://localhost:8000/api/forecast \
+  -F "horizon={{ horizon }}" \
+  -F "csv_file=@/path/to/cpu_utilization.csv;type=text/csv"</pre>
       {% if image_data %}
         <h2>Preview</h2>
         <img class="preview" src="data:image/png;base64,{{ image_data }}" alt="Forecast preview">

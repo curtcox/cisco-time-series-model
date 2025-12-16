@@ -71,8 +71,8 @@ jobs:
             TAGS="$TAGS\n${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           fi
           {
-            echo "tags<<'EOF'"
-            echo -e "$TAGS"
+            echo "tags<<EOF"
+            printf '%b\n' "$TAGS"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

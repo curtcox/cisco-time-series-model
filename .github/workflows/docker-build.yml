@@ -28,7 +28,7 @@ jobs:
             is_default: "true"
           - variant: gpu
             torch_channel: cu121
-            base_image: pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+            base_image: nvidia/cuda:12.1.0-runtime-ubuntu22.04
             tag_suffix: gpu
             is_default: "false"
     env:
@@ -39,6 +39,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Free disk space (GPU builds)
+        if: matrix.variant == 'gpu'
+        shell: bash
+        run: |
+          echo "Disk space before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          echo "Disk space after cleanup:"
+          df -h /
 
       - name: Install NVIDIA Container Toolkit (if GPU detected)
         if: runner.os == 'Linux' && matrix.variant == 'gpu'
@@ -93,21 +104,24 @@ jobs:
           build-args: |
             TORCH_WHL_CHANNEL=${{ matrix.torch_channel }}
             BASE_IMAGE=${{ matrix.base_image }}
-          load: true
+          load: ${{ matrix.variant == 'cpu' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep-tags.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Tag local image for artifact
+        if: matrix.variant == 'cpu'
         run: docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag_suffix }}-latest cpu-forecast-server:${{ matrix.tag_suffix }}-ci
         shell: bash
 
       - name: Save Docker image archive
+        if: matrix.variant == 'cpu'
         run: docker save cpu-forecast-server:${{ matrix.tag_suffix }}-ci | gzip > cpu-forecast-server-${{ matrix.tag_suffix }}-image.tar.gz
         shell: bash
 
       - name: Upload Docker image artifact
+        if: matrix.variant == 'cpu'
         uses: actions/upload-artifact@v4
         with:
           name: cpu-forecast-server-${{ matrix.tag_suffix }}-image

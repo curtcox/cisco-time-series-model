@@ -36,7 +36,7 @@ TEMPLATE_DIR = BASE_DIR / "templates"
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
 
 DEFAULT_HORIZON = 1280
-MAX_HORIZON = 4096
+MAX_HORIZON = 524288
 
 
 @dataclass

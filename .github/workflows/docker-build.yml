@@ -43,11 +43,14 @@ jobs:
           load: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            cpu-forecast-server:ci
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Tag local image for artifact
+        run: docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest cpu-forecast-server:ci
+        shell: bash
 
       - name: Save Docker image archive
         run: docker save cpu-forecast-server:ci | gzip > cpu-forecast-server-image.tar.gz

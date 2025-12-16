@@ -10,6 +10,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional, Tuple
 
 import matplotlib
@@ -18,7 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
-from flask import Flask, jsonify, render_template_string, request, send_file
+from flask import Flask, jsonify, render_template, request, send_file
 
 from run_plot_cpu_csv import (
     DEFAULT_SAMPLE,
@@ -29,151 +30,13 @@ from run_plot_cpu_csv import (
 )
 
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATE_DIR = BASE_DIR / "templates"
+
+app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
 
 DEFAULT_HORIZON = 1280
 MAX_HORIZON = 4096
-HTML_TEMPLATE = """
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>CiscoTsmMR CPU Forecast Sandbox</title>
-    <style>
-      :root {
-        color: #0f172a;
-        background-color: #f8fafc;
-        font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      }
-      body {
-        margin: 0 auto;
-        max-width: 960px;
-        padding: 2.5rem 1.5rem 4rem;
-        line-height: 1.5;
-      }
-      h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-      p.lead { margin-top: 0; font-size: 1rem; color: #475569; }
-      form {
-        background: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 20px 35px rgba(15, 23, 42, 0.12);
-        margin-bottom: 2rem;
-      }
-      fieldset {
-        border: none;
-        margin: 0;
-        padding: 0;
-        display: grid;
-        gap: 1rem;
-      }
-      label {
-        font-weight: 600;
-        color: #0f172a;
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-      }
-      input[type="number"],
-      textarea {
-        border-radius: 0.6rem;
-        border: 1px solid #cbd5f5;
-        padding: 0.65rem 0.75rem;
-        font-size: 1rem;
-        font-family: inherit;
-        resize: vertical;
-      }
-      input[type="file"] {
-        font-size: 0.95rem;
-      }
-      button {
-        width: fit-content;
-        border: none;
-        border-radius: 999px;
-        padding: 0.85rem 1.6rem;
-        font-size: 1rem;
-        font-weight: 600;
-        background: linear-gradient(135deg, #2563eb, #0ea5e9);
-        color: white;
-        cursor: pointer;
-      }
-      .error {
-        background: #fee2e2;
-        border-radius: 0.75rem;
-        padding: 0.9rem 1.1rem;
-        color: #991b1b;
-        margin-bottom: 1rem;
-      }
-      .result-card {
-        background: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
-      }
-      .api-block {
-        border-radius: 0.75rem;
-        background: #0f172a;
-        color: #e2e8f0;
-        padding: 1rem 1.25rem;
-        font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
-        font-size: 0.9rem;
-      }
-      img.preview {
-        width: 100%;
-        max-height: 480px;
-        object-fit: contain;
-        border-radius: 0.75rem;
-        border: 1px solid #e2e8f0;
-        margin-top: 1rem;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>CiscoTsmMR CPU Forecast Sandbox</h1>
-    <p class="lead">
-      Upload a CSV, paste time-series data, or rely on the bundled sample to reproduce
-      <code>run_plot_cpu_csv.py</code> directly from your browser.
-    </p>
-    {% if error %}
-      <div class="error">{{ error }}</div>
-    {% endif %}
-    <form method="post" enctype="multipart/form-data">
-      <fieldset>
-        <label>
-          Forecast horizon (minutes)
-          <input type="number" name="horizon" min="1" max="{{ max_horizon }}" value="{{ horizon }}" required>
-        </label>
-        <label>
-          CSV upload
-          <input type="file" name="csv_file" accept=".csv,text/csv">
-          <small>Provide columns named <code>_time</code> and <code>cpu_util</code>.</small>
-        </label>
-        <label>
-          Or paste CSV rows
-          <textarea name="csv_text" rows="6">{{ csv_text }}</textarea>
-        </label>
-        <label style="flex-direction: row; align-items: center; gap: 0.5rem; font-weight: 500;">
-          <input type="checkbox" name="use_sample" value="1" {% if use_sample %}checked{% endif %}>
-          Use bundled sample when no CSV is supplied
-        </label>
-        <button type="submit">Generate forecast</button>
-      </fieldset>
-    </form>
-
-    <section class="result-card">
-      <h2>API usage</h2>
-      <p>Automate forecasts via <code>/api/forecast</code> (POST JSON, URL-encoded, or multipart):</p>
-      <pre class="api-block">curl -o forecast.png -X POST http://localhost:8000/api/forecast \\
-  -H "Content-Type: application/json" \\
-  -d '{"horizon": {{ horizon }}, "use_sample": true}'</pre>
-      {% if image_data %}
-        <h2>Preview</h2>
-        <img class="preview" src="data:image/png;base64,{{ image_data }}" alt="Forecast preview">
-      {% endif %}
-    </section>
-  </body>
-</html>
-"""
 
 
 @dataclass
@@ -301,8 +164,8 @@ SAMPLE_PREVIEW = _sample_preview()
 @app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "GET":
-        return render_template_string(
-            HTML_TEMPLATE,
+        return render_template(
+            "cpu_forecast.html",
             error=None,
             image_data=None,
             csv_text=SAMPLE_PREVIEW,
@@ -314,8 +177,8 @@ def home():
         horizon, payload = _extract_params(request)
         png_bytes = _render_plot(payload.timestamps, payload.values, horizon)
         img_b64 = base64.b64encode(png_bytes).decode("ascii")
-        return render_template_string(
-            HTML_TEMPLATE,
+        return render_template(
+            "cpu_forecast.html",
             error=None,
             image_data=img_b64,
             csv_text=request.form.get("csv_text", SAMPLE_PREVIEW),
@@ -324,15 +187,18 @@ def home():
             max_horizon=MAX_HORIZON,
         )
     except ValueError as exc:
-        return render_template_string(
-            HTML_TEMPLATE,
-            error=str(exc),
-            image_data=None,
-            csv_text=request.form.get("csv_text", SAMPLE_PREVIEW),
-            horizon=request.form.get("horizon", DEFAULT_HORIZON),
-            use_sample=request.form.get("use_sample") in ("1", "true", "on"),
-            max_horizon=MAX_HORIZON,
-        ), 400
+        return (
+            render_template(
+                "cpu_forecast.html",
+                error=str(exc),
+                image_data=None,
+                csv_text=request.form.get("csv_text", SAMPLE_PREVIEW),
+                horizon=request.form.get("horizon", DEFAULT_HORIZON),
+                use_sample=request.form.get("use_sample") in ("1", "true", "on"),
+                max_horizon=MAX_HORIZON,
+            ),
+            400,
+        )
 
 
 @app.post("/api/forecast")

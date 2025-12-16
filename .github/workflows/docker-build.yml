@@ -28,7 +28,7 @@ jobs:
             is_default: "true"
           - variant: gpu
             torch_channel: cu121
-            base_image: nvidia/cuda:12.1.0-runtime-ubuntu22.04
+            base_image: python:3.10.13-slim
             tag_suffix: gpu
             is_default: "false"
     env:

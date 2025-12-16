@@ -17,32 +17,57 @@ docker build -t cisco-cpu-forecast:latest .
 
 This copies the repo, installs `requirements.txt`, and sets `cpu_forecast_server.py` as the default entrypoint listening on port `8000`. The Docker image uses Python 3.10.13 to match the verified runtime declared in `.python-version`.
 
+### Build with GPU Wheels (optional)
+
+The Dockerfile defaults to CPU-only PyTorch wheels by pointing `PIP_INDEX_URL` at `https://download.pytorch.org/whl/cpu`. To target NVIDIA wheels, pass the CUDA channel via the `TORCH_WHL_CHANNEL` build argument, e.g.:
+
+```bash
+# CUDA 12.1 wheels
+docker build --build-arg TORCH_WHL_CHANNEL=cu121 -t cisco-cpu-forecast:gpu .
+```
+
+The final `PIP_INDEX_URL` becomes `https://download.pytorch.org/whl/<channel>`. Use any channel published by PyTorch (`cu118`, `cu121`, etc.). When no argument is provided the build remains CPU-only.
+
 ### Use the Published GitHub Container Registry Image
 
 If you prefer not to build locally, every push to `main` automatically publishes an image to the GitHub Container Registry (GHCR). Authenticate with GHCR (a classic PAT with the `read:packages` scope or the standard `GITHUB_TOKEN` in CI) and pull:
 
 ```bash
 # replace <owner> with the GitHub org/user that hosts this repo
-docker pull ghcr.io/<owner>/cisco-cpu-forecast:latest
-docker run --rm -it -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:latest
+docker pull ghcr.io/<owner>/cisco-cpu-forecast:cpu-latest   # CPU build (default)
+docker pull ghcr.io/<owner>/cisco-cpu-forecast:gpu-latest   # GPU build (CUDA 12.1 wheels)
+docker run --rm -it -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:cpu-latest
 ```
 
-> CI jobs also upload a compressed Docker image (`cpu-forecast-server-image.tar.gz`) as a GitHub Action artifact. Download it from the workflow run summary, decompress, and load it with `docker load -i cpu-forecast-server-image.tar.gz`.
+> CI jobs also upload compressed Docker images (`cpu-forecast-server-cpu-image.tar.gz` and `cpu-forecast-server-gpu-image.tar.gz`) as GitHub Action artifacts. Download them from the workflow run summary, decompress, and load with `docker load -i <artifact>`.
 
 ## Run the Container
 
 The container exposes port `8000` via the `CPU_FORECAST_SERVER_PORT` environment variable. Map it to your host port with `-p 8000:8000`.
 
+Choose the image that matches your hardware:
+
+- **CPU** (portable, no GPU dependencies): `ghcr.io/<owner>/cisco-cpu-forecast:cpu-latest`
+- **GPU** (requires NVIDIA Container Toolkit + CUDA-capable hardware): `ghcr.io/<owner>/cisco-cpu-forecast:gpu-latest`
+
 ### macOS / Linux (bash/zsh)
 
 ```bash
-docker run --rm -it -p 8000:8000 cisco-cpu-forecast:latest
+# CPU example
+docker run --rm -it -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:cpu-latest
+
+# GPU example (Docker host must expose GPUs, e.g., --gpus all on Docker CLI)
+docker run --rm -it --gpus all -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:gpu-latest
 ```
 
 ### Windows PowerShell
 
 ```powershell
-docker run --rm -it -p 8000:8000 cisco-cpu-forecast:latest
+# CPU
+docker run --rm -it -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:cpu-latest
+
+# GPU
+docker run --rm -it --gpus all -p 8000:8000 ghcr.io/<owner>/cisco-cpu-forecast:gpu-latest
 ```
 
 > The commands are identical across platforms. Ensure Docker Desktop is running on Windows/macOS. Linux requires the Docker daemon to be active.
@@ -67,4 +92,5 @@ docker run --rm -it -p 8000:8000 cisco-cpu-forecast:latest
 
 - **Port already in use:** Change the host side of the mapping, e.g., `-p 8080:8000`, then visit http://localhost:8080.
 - **Slow first request:** The model downloads weights on first use; subsequent runs are faster because the checkpoint remains in the Docker layer cache.
-- **GPU acceleration:** The default image targets CPU inference. Extend the Dockerfile with NVIDIA CUDA tooling if GPU support is required.
+- **GPU acceleration:** Build with `--build-arg TORCH_WHL_CHANNEL=<cu version>` and run on a host with the NVIDIA Container Toolkit installed so Docker can expose the GPU to the container. Without the arg, the image uses CPU wheels.
+- **CPU vs GPU tags:** `*-cpu-*` tags work everywhere; `*-gpu-*` tags assume CUDA-compatible hardware. Pull the tag that matches your environment to avoid unnecessary dependencies.
